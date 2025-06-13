@@ -479,12 +479,10 @@ let _find_color_fn palette =
   Array.iteri (fun i (r, g, b) -> colors.{r, g, b} <- i) palette;
   function r, g, b -> Bigarray.Array3.get colors r g b
 
-(* Z danego obrazka tworzy caly kontener GIF z jedna ramka. Wymaga, by
-   obrazek mial palete <= niz 256 kolorow *)
-let from_image img =
-  let palette = Image.palette img in
+(* Shared logic for computing color table size, LZW code size, and building the color table*)
+let compute_color_table (palette : ColorTable.t) : int * int * ColorTable.t =
+  let n = Array.length palette in
   let ct_size =
-    let n = Array.length palette in
     if n <= 2 then 0
     else if n <= 4 then 1
     else if n <= 8 then 2
@@ -493,15 +491,51 @@ let from_image img =
     else if n <= 64 then 5
     else if n <= 128 then 6
     else if n <= 256 then 7
-    else raise (Error "from_image: too many colors")
+    else raise (Error "too many colors in palette")
   in
-  (* minimalny rozmiar kodu to 2 *)
   let code_size = if ct_size < 2 then 2 else ct_size + 1 in
-  let new_palette =
+  let table =
     let p = ColorTable.create (1 lsl (ct_size + 1)) in
-    Array.iteri (fun n c -> ColorTable.set p n c) palette;
+    Array.iteri (fun i c -> ColorTable.set p i c) palette;
     p
   in
+  (ct_size, code_size, table)
+
+(* Shared logic for image block creation*)
+let block_of_image ~w ~h ~code_size (img : Image.t) : block =
+  let ctl =
+    {
+      disposal_method = 0;
+      user_input = false;
+      transparent_color = Image.transparent img;
+      delay_time = (match Image.delay_time img with Some d -> d | None -> 0);
+    }
+  in
+  let desc =
+    {
+      image_left_pos = 0;
+      image_top_pos = 0;
+      image_width = w;
+      image_height = h;
+      local_color_table = None;
+      local_color_table_sort = false;
+      local_color_table_size = 0;
+      interlace_flag = false;
+    }
+  in
+  ImageBlock
+    {
+      image_descriptor = desc;
+      image_control = Some ctl;
+      image_data = Image.compressed_image_data img;
+      image_lzw_code_size = code_size;
+    }
+
+(* Z danego obrazka tworzy caly kontener GIF z jedna ramka. Wymaga, by
+   obrazek mial palete <= niz 256 kolorow *)
+let from_image img =
+  let palette = Image.palette img in
+  let ct_size, code_size, new_palette = compute_color_table palette in
   let w, h = Image.dimensions img in
   let info =
     {
@@ -512,36 +546,40 @@ let from_image img =
       global_color_table_size = ct_size;
     }
   in
-  let ctl =
-    {
-      disposal_method = 0;
-      user_input = false;
-      transparent_color = None;
-      delay_time = 0;
-    }
-  in
-  let blocks =
-    [
-      ImageBlock
-        {
-          image_descriptor =
-            {
-              image_left_pos = 0;
-              image_top_pos = 0;
-              image_width = w;
-              image_height = h;
-              local_color_table = None;
-              local_color_table_sort = false;
-              local_color_table_size = 0;
-              interlace_flag = false;
-            };
-          image_control = Some ctl;
-          image_data = Image.compressed_image_data img;
-          image_lzw_code_size = code_size;
-        };
-    ]
-  in
+  let blocks = [ block_of_image ~w ~h ~code_size img ] in
   { stream_descriptor = info; blocks }
+
+(* Creates an animated GIF and ensures that all images have same dimensions and use palettes with 256 or fewer colors*)
+let from_images (images : Image.t list) : t =
+  match images with
+  | [] -> raise (Error "from_images: empty image list")
+  | img0 :: _ ->
+      let w, h = Image.dimensions img0 in
+      List.iter
+        (fun img ->
+          let w', h' = Image.dimensions img in
+          if w <> w' || h <> h' then
+            raise (Error "from_images: inconsistent image dimensions");
+          let n_colors = Array.length (Image.palette img) in
+          if n_colors > 256 then
+            raise (Error "from_images: too many colors in an image"))
+        images;
+
+      let palette = Image.palette img0 in
+      let ct_size, code_size, global_ct = compute_color_table palette in
+      let info =
+        {
+          default_info with
+          screen_width = w;
+          screen_height = h;
+          global_color_table = Some global_ct;
+          global_color_table_size = ct_size;
+        }
+      in
+      let blocks =
+        List.map (fun img -> block_of_image img ~w ~h ~code_size) images
+      in
+      { stream_descriptor = info; blocks }
 
 let dimensions i =
   (i.stream_descriptor.screen_width, i.stream_descriptor.screen_height)

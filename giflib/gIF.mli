@@ -9,13 +9,19 @@ val from_file : string -> t
     exception on error. *)
 
 val from_image : Image.t -> t
+(** Creates a GIF from a single image *)
+
 val to_file : t -> string -> unit
+(** Writes a GIF to a file. *)
+
+val from_images : Image.t list -> t
+(** Creates a GIF from a list of images for animation *)
 
 val get_image : t -> int -> Image.t
-(** Get a container image by index *)
+(** Gets a container image by index *)
 
 val image_count : t -> int
-(** Get the number of images in the container GIF *)
+(** Gets the number of images in the container GIF *)
 
 val dimensions : t -> int * int
 (** Returns the screen dimensions of the GIF file. Note that individual images
