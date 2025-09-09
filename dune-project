@@ -1,4 +1,4 @@
-(lang dune 3.14)
+(lang dune 3.18)
 
 (name giflib)
 
@@ -12,6 +12,8 @@
 (maintainers "Michael Dales <michael@digitalflapjack.com>" "Shreya Pawaskar <shreya.pawaskar.main@gmail.com>")
 
 (license MIT)
+
+(maintenance_intent "(latest)")
 
 (documentation https://github.com/claudiusFX/ocaml-gif)
 
