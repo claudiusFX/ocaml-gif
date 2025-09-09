@@ -18,7 +18,7 @@ doc: "https://github.com/claudiusFX/ocaml-gif"
 bug-reports: "https://github.com/claudiusFX/ocaml-gif/issues"
 depends: [
   "ocaml" {>= "5.1"}
-  "dune" {>= "3.14"}
+  "dune" {>= "3.18"}
   "ounit2" {with-test}
   "zarith"
   "odoc" {with-doc}
@@ -39,3 +39,4 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/claudiusFX/ocaml-gif.git"
+x-maintenance-intent: ["(latest)"]

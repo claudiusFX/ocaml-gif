@@ -82,6 +82,31 @@ let test_write_image_6_bpp _ =
   assert_equal ~msg:"palette size" ~printer:string_of_int colours
     (ColorTable.size palette)
 
+let test_write_image_of_pixels_6_bpp _ =
+  let width = 100 and height = 100 in
+  let colours = 64 in
+  let temp_dir = Filename.temp_dir "test" "write" in
+  let colour_table = Array.init colours (fun i -> (i, i, i)) in
+  let pixels = Array.init (width * height) (fun i -> i mod colours) in
+  let image = Image.of_pixels (width, height) colour_table pixels in
+  let src_gif = GIF.from_image image in
+  let filename = temp_dir ^ "/6bpp.gif" in
+  GIF.to_file src_gif filename;
+
+  let img = GIF.get_image src_gif 0 in
+  let palette = Image.palette img in
+  assert_equal ~msg:"palette size" ~printer:string_of_int colours
+    (ColorTable.size palette);
+
+  let dst_gif = GIF.from_file filename in
+  assert_equal 1 (GIF.image_count dst_gif);
+  assert_equal ~msg:"screen dims" (width, height) (GIF.dimensions dst_gif);
+
+  let img = GIF.get_image dst_gif 0 in
+  let palette = Image.palette img in
+  assert_equal ~msg:"palette size" ~printer:string_of_int colours
+    (ColorTable.size palette)
+
 let test_write_image_8_bpp _ =
   let width = 100 and height = 100 in
   let colours = 256 and bpp = 8 in
@@ -109,6 +134,57 @@ let test_write_image_8_bpp _ =
   let img = GIF.get_image dst_gif 0 in
   let palette = Image.palette img in
   assert_equal ~msg:"palette size" ~printer:string_of_int colours
+    (ColorTable.size palette)
+
+let test_write_image_of_pixels_8_bpp _ =
+  let width = 100 and height = 100 in
+  let colours = 256 in
+  let temp_dir = Filename.temp_dir "test" "write" in
+  let colour_table = Array.init colours (fun i -> (i, i, i)) in
+  let pixels = Array.init (width * height) (fun i -> i mod colours) in
+  let image = Image.of_pixels (width, height) colour_table pixels in
+  let src_gif = GIF.from_image image in
+  let filename = temp_dir ^ "/6bpp.gif" in
+  GIF.to_file src_gif filename;
+
+  let img = GIF.get_image src_gif 0 in
+  let palette = Image.palette img in
+  assert_equal ~msg:"palette size" ~printer:string_of_int colours
+    (ColorTable.size palette);
+
+  let dst_gif = GIF.from_file filename in
+  assert_equal 1 (GIF.image_count dst_gif);
+  assert_equal ~msg:"screen dims" (width, height) (GIF.dimensions dst_gif);
+
+  let img = GIF.get_image dst_gif 0 in
+  let palette = Image.palette img in
+  assert_equal ~msg:"palette size" ~printer:string_of_int colours
+    (ColorTable.size palette)
+
+let test_write_image_non_power_2_colors _ =
+  let width = 100 and height = 100 in
+  let colours = 20 in
+  let temp_dir = Filename.temp_dir "test" "write" in
+  let colour_table = Array.init colours (fun i -> (i, i, i)) in
+  let pixels = Array.init (width * height) (fun i -> i mod colours) in
+  let image = Image.of_pixels (width, height) colour_table pixels in
+  let src_gif = GIF.from_image image in
+  let filename = temp_dir ^ "/6bpp.gif" in
+  GIF.to_file src_gif filename;
+
+  let img = GIF.get_image src_gif 0 in
+  let palette = Image.palette img in
+  let expected_colors = 32 in
+  assert_equal ~msg:"palette size" ~printer:string_of_int expected_colors
+    (ColorTable.size palette);
+
+  let dst_gif = GIF.from_file filename in
+  assert_equal 1 (GIF.image_count dst_gif);
+  assert_equal ~msg:"screen dims" (width, height) (GIF.dimensions dst_gif);
+
+  let img = GIF.get_image dst_gif 0 in
+  let palette = Image.palette img in
+  assert_equal ~msg:"palette size" ~printer:string_of_int expected_colors
     (ColorTable.size palette)
 
 let test_write_animation_8_bpp _ =
@@ -163,7 +239,12 @@ let suite =
          "Test re-read image" >:: test_read_image_twice;
          "Test read mono image" >:: test_read_mono_image;
          "Test write 6 bpp image" >:: test_write_image_6_bpp;
+         "Test write 6 bpp image using of_pixels"
+         >:: test_write_image_of_pixels_6_bpp;
          "Test write 8 bpp image" >:: test_write_image_8_bpp;
+         "Test write 8 bpp image using of_pixels"
+         >:: test_write_image_of_pixels_8_bpp;
+         "Test write 20 color image" >:: test_write_image_non_power_2_colors;
          "Test write 8 bpp animation" >:: test_write_animation_8_bpp;
        ]
 
