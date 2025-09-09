@@ -33,6 +33,29 @@ let v ?offset ?transparent ?delay_time dim palette compressed_image_data
     delay_time;
   }
 
+let of_pixels ?offset ?transparent ?delay_time dimensions palette pixels =
+  let width, height = dimensions in
+  if width < 0 || height < 0 then
+    raise (Invalid_argument "Dimensions can not be negative");
+  if width * height != Array.length pixels then
+    raise (Invalid_argument "Dimensions and pixel array have different size");
+  let palette_size = ColorTable.size palette in
+  if palette_size == 0 then raise (Invalid_argument "Palette has no entries");
+  let rec calc_bpp n acc =
+    if n > 8 then raise (Invalid_argument "Palette larger than 256 entries");
+    match acc >= palette_size with
+    | true -> n
+    | false -> calc_bpp (n + 1) (acc * 2)
+  in
+  let bpp = calc_bpp 1 2 in
+  let prepped_pixels =
+    List.init (Array.length pixels) (fun i -> (Z.of_int pixels.(i), bpp))
+  in
+  let packed_pixels = Lzw.flatten_codes 8 prepped_pixels in
+  let compressed_pixels = Lzw.encode packed_pixels bpp in
+  v ?offset ?transparent ?delay_time dimensions palette compressed_pixels bpp
+    false
+
 let dimensions i = (i.width, i.height)
 let offset i = (i.x_offset, i.y_offset)
 let palette i = i.palette

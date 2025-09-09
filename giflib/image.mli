@@ -14,6 +14,19 @@ val v :
   int ->
   bool ->
   t
+(** [v ?offset ?transparent ?delay_time dim palette compressed_image_data
+     lzw_code_size interlaced] Create an image record for use inside a GIF.t. *)
+
+val of_pixels :
+  ?offset:int * int ->
+  ?transparent:int option ->
+  ?delay_time:int option ->
+  int * int ->
+  ColorTable.t ->
+  int array ->
+  t
+(** [of_pixels ?offset ?transparency ?delay_time dimensions palette pixels]
+    Creates a new image record from a set of pixel data and a palette. *)
 
 val dimensions : t -> int * int
 (** The dimensions of the image. Note that this might be smaller than the
